@@ -19,10 +19,13 @@ docker compose up --build -d
 - 工时切段：`/m5_calculate`、`/api/m5_calculate`
 - 薪资对账：`/m6_reconcile`、`/api/m6_reconcile`
 - 周期归档：`/m7_archive`、`/api/m7_archive`
+- 跨夜召回保障：`/m8_recall`、`/api/m8_recall/events`（独立台账，规则见 `docs/RECALL-GUARANTEE.md`）
 
 ## 核心规则
 
 跨夜按班次归属日配对，休息区间先扣除，再按法定日期和工时阈值切分倍率。完整数值、边界和异常定义见 `docs/DATA-DICTIONARY.md`。
+
+跨夜召回一次只成立一次 240 分钟保底：实际工作按日历日归集，补足 `max(0,240−工作分钟)` 后按各日工作占比以最大余数法分摊，工作与补足各自乘当日倍率。补卡/费率改动作废旧凭证重算，替换失败恢复旧版，重试幂等且原始打卡只追加。详见 `docs/RECALL-GUARANTEE.md`。
 
 ## 验证
 

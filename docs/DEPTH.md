@@ -13,6 +13,7 @@
 | M5 工时切段 | 查看并复算工时切段 | `/api/m5_calculate` | `app/modules/m5_calculate/rules.py` | `tests/test_calculate.py` |
 | M6 薪资对账 | 查看并复算薪资对账 | `/api/m6_reconcile` | `app/modules/m6_reconcile/compare.py` | `tests/test_reconcile.py` |
 | M7 周期归档 | 查看并复算周期归档 | `/api/m7_archive` | `app/modules/m7_archive/export_out.py` | `tests/test_archive.py` |
+| M8 跨夜召回保障 | 注册召回、补卡、改费率并核对可支付凭证 | `/api/m8_recall/events` | `app/modules/m8_recall/rules.py` | `tests/test_recall_rules.py`、`tests/test_recall_service.py` |
 
 ## 陷阱登记
 
@@ -31,6 +32,10 @@
 | TRAP-26 | 旧版本复核 | 覆盖新结论 | 事务条件更新 | `app/store.py` | `tests/test_archive.py::test_stale_review` |
 | TRAP-23 | 休息与跨夜端点 | 重复或漏计 | 半开区间切片 | `app/modules/m4_segments/rules.py` | `tests/test_segments.py::test_break_removed` |
 | TRAP-19 | 假日与周末重叠 | 费率相加 | 假日优先 | `app/modules/m5_calculate/rules.py` | `tests/test_calculate.py::test_holiday_overrides_rest` |
+| TRAP-30 | 跨夜保底重复或跨日错配 | 两个日期各给一份240 / 全留原日期 | 一次召回一次240保底，按各日工作占比最大余数法分摊 | `app/modules/m8_recall/rules.py` | `tests/test_recall_rules.py::test_makeup_split_proportional_and_sum_exact` |
+| TRAP-31 | 重试同一召回 | 每次请求都加保障 | 请求指纹判重，复用现行凭证 | `app/modules/m8_recall/service.py` | `tests/test_recall_service.py::test_repeated_identical_request_is_deduped_and_adds_no_minutes` |
+| TRAP-32 | 补卡覆盖旧卡、重算丢记录 | 原地更新删除历史 | 打卡只追加、同 punch_id 递增 seq；失败事务回滚但记录保留 | `app/modules/m8_recall/recall_store.py` | `tests/test_recall_service.py::test_replace_failure_restores_previous_voucher_and_keeps_records` |
+| TRAP-33 | 费率改动污染历史凭证 | 用最新费率重算旧单 | 费率版本快照冻结在凭证体内 | `app/modules/m8_recall/recall_store.py` | `tests/test_recall_service.py::test_rate_version_frozen_inside_voucher_body` |
 
 ## 对账规则
 

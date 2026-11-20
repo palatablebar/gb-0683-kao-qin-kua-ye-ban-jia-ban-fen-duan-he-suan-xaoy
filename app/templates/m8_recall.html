@@ -1,0 +1,81 @@
+{% extends "base.html" %}{% block content %}
+<div class="sheet-layout recall-layout">
+  <section class="panel sheet">
+    <header><h2>召回事件与现行可支付凭证</h2><span>保底 {{data.guarantee_minutes}} 分钟/次 · 费率版本 v{{data.rate_version}}</span></header>
+    <div class="scroll">
+      <table class="ledger">
+        <thead>
+          <tr class="letters"><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr>
+          <tr><th>#</th><th>召回事件</th><th>员工</th><th>时薪</th><th>工作分钟</th><th>保障补足</th><th>应付 CNY</th></tr>
+        </thead>
+        <tbody id="event-rows">
+          {% for e in data.events %}
+          <tr class="event-row" data-id="{{e.event_id}}" tabindex="0">
+            <td class="rownum">{{loop.index}}</td>
+            <td>{{e.event_id}}<br><small>{{e.voucher_no or '无凭证'}}</small></td>
+            <td>{{e.employee}}</td>
+            <td class="num">{{e.hourly_rate}}</td>
+            <td class="num">{{e.total_work_minutes if e.total_work_minutes is not none else '—'}}</td>
+            <td class="num">{{e.makeup_minutes if e.makeup_minutes is not none else '—'}}</td>
+            <td class="num">{{e.payable if e.payable is not none else '—'}}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7">暂无召回事件</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="button-row">
+      <button id="refresh">刷新列表</button>
+      <button id="seed-btn">载入演示召回</button>
+    </div>
+  </section>
+
+  <section class="panel side">
+    <header><h2>裁决规则</h2><span>跨夜召回保底</span></header>
+    <dl class="rules">
+      <dt>单次保底</dt><dd>{{data.guarantee_minutes}} 分钟（4 小时），整次召回只成立一次</dd>
+      <dt>补足分钟</dt><dd>max(0, {{data.guarantee_minutes}} − 全事件实际工作分钟)</dd>
+      <dt>跨日分摊</dt><dd>按各日历日工作分钟占比，最大余数法取整，合计不重复不超保底</dd>
+      <dt>计薪口径</dt><dd>工作分钟、补足分钟各自乘以所在日历日倍率</dd>
+      <dt>重试</dt><dd>同请求指纹幂等去重，不新增保障分钟</dd>
+      <dt>补卡/费率改动</dt><dd>旧凭证作废留版，重新生成；替换失败恢复旧版凭证</dd>
+    </dl>
+  </section>
+
+  <section class="panel sheet" id="detail-panel">
+    <header><h2>事件可支付核对</h2><span id="detail-event">选择左侧事件查看明细</span></header>
+    <div id="detail-body"><p class="hash">点击任一召回事件，核对每段工作与保障补足为何形成应付。</p></div>
+  </section>
+
+  <section class="panel side">
+    <header><h2>操作</h2><span>记录只追加</span></header>
+    <form id="register-form">
+      <label>事件ID<input name="event_id" required placeholder="RC-20261002-01"></label>
+      <label>员工<input name="employee" required placeholder="E501"></label>
+      <label>时薪 CNY<input name="hourly_rate" required value="30"></label>
+      <label>IN 打卡（带偏移）<input name="in_at" required value="2026-10-01T23:00:00+08:00"></label>
+      <label>OUT 打卡（带偏移）<input name="out_at" required value="2026-10-02T01:00:00+08:00"></label>
+      <label>休息开始（可留空）<input name="break_start" placeholder="2026-10-02T00:00:00+08:00"></label>
+      <label>休息结束（可留空）<input name="break_end" placeholder="2026-10-02T00:30:00+08:00"></label>
+      <button type="submit">注册/重试召回</button>
+    </form>
+    <form id="makeup-form">
+      <label>事件ID<input name="event_id" required placeholder="RC-DEMO-01"></label>
+      <label>补卡 punch_id（同 id 产生新版本）<input name="punch_id" required value="P-IN"></label>
+      <label>方向
+        <select name="direction"><option>IN</option><option>OUT</option></select>
+      </label>
+      <label>补卡时间（带偏移）<input name="at" required value="2026-10-01T22:30:00+08:00"></label>
+      <button type="submit">提交补卡并重算</button>
+    </form>
+    <form id="rate-form">
+      <label>费率日历 JSON<input name="rate_calendar" required style="min-height:96px"
+        value='{"2026-10-01":{"multiplier":"3","label":"法定假日"},"2026-10-02":{"multiplier":"1","label":"工作日"}}'></label>
+      <label>限定事件（可留空=全部）<input name="affected_events" placeholder="RC-DEMO-01"></label>
+      <button type="submit">改费率并作废重算</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/recall.js" defer></script>{% endblock %}
